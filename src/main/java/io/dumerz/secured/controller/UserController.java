@@ -5,11 +5,15 @@ import java.util.Arrays;
 import java.util.List;
 import static java.util.stream.Collectors.toList;
 
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import io.dumerz.secured.model.User;
 
@@ -30,6 +34,7 @@ public class UserController {
     );
 
     @GetMapping("/")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_ADMIN_READONLY')")
     public List<User> getAll() {
         return USERS.stream()
                     .map(user -> user)
@@ -37,10 +42,32 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_ADMIN_READONLY')")
     public User getUser(@PathVariable @RequestBody int id) {
         return USERS.stream()
                     .filter(user -> id == user.getId())
                     .findFirst()
                     .orElseThrow(() -> new IllegalStateException("User " + id + " not found."));
+    }
+
+    @PostMapping
+    @PreAuthorize("hasAuthority('user:write'")
+    public void createUser(@RequestBody User user) {
+        System.out.println("New user added.");
+        System.out.println(user);
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('user:write')")
+    public void deleteUser(@PathVariable @RequestBody int id) {
+        System.out.println("User deleted.");
+        System.out.println(id);
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('user:write')")
+    public void updateUser(@PathVariable int id, @RequestBody User user) {
+        System.out.println("User updated");
+        System.out.println(String.format("%s %s", id, user));
     }
 }

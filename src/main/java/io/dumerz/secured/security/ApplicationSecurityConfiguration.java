@@ -3,6 +3,7 @@ package io.dumerz.secured.security;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
@@ -13,6 +14,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import static io.dumerz.secured.security.ApplicationUserRole.*;
+import static io.dumerz.secured.security.ApplicationUserPermission.*;
 
 @Configuration
 @EnableWebSecurity
@@ -27,9 +29,15 @@ public class ApplicationSecurityConfiguration extends WebSecurityConfigurerAdapt
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
-        http.authorizeRequests()
-            .antMatchers("/api/**")
-            .hasRole(ADMIN.name())
+        http.csrf()
+            .disable()
+            .authorizeRequests()
+            .antMatchers("/", "/css/*", "/js/*")
+            .permitAll()
+            .antMatchers(HttpMethod.DELETE, "/api/user/**").hasAuthority(USER_WRITE.getPermission())
+            .antMatchers(HttpMethod.POST, "/api/user/**").hasAuthority(USER_WRITE.getPermission())
+            .antMatchers(HttpMethod.PUT, "/api/user/**").hasAuthority(USER_WRITE.getPermission())
+            .antMatchers(HttpMethod.GET, "/api/user/**").hasAnyRole(ADMIN.name(), ADMIN_READONLY.name())
             .anyRequest()
             .authenticated()
             .and()
@@ -42,17 +50,23 @@ public class ApplicationSecurityConfiguration extends WebSecurityConfigurerAdapt
         UserDetails userNew = User.builder()
             .username("user06A")
             .password(passwordEncoder.encode("P@ssword123"))
-            .roles(STUDENT.name())
+            .authorities(MEMBER.getGrantedAuthorities())
             .build();
 
             UserDetails userAdmin = User.builder()
             .username("user06B")
             .password(passwordEncoder.encode("P@ssword123"))
-            .roles(ADMIN.name())
+            .authorities(ADMIN.getGrantedAuthorities())
+            .build();
+
+            UserDetails userAdminReadOnly = User.builder()
+            .username("user06C")
+            .password(passwordEncoder.encode("P@ssword123"))
+            .authorities(ADMIN_READONLY.getGrantedAuthorities())
             .build();
 
         return new InMemoryUserDetailsManager(
-            userNew, userAdmin
+            userNew, userAdmin, userAdminReadOnly
         );
     }
 }
