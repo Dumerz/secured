@@ -10,10 +10,14 @@ import org.springframework.security.config.annotation.web.configuration.WebSecur
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import static io.dumerz.secured.security.ApplicationUserRole.*;
+
+import java.util.concurrent.TimeUnit;
+
 import static io.dumerz.secured.security.ApplicationUserPermission.*;
 
 @Configuration
@@ -32,7 +36,7 @@ public class ApplicationSecurityConfiguration extends WebSecurityConfigurerAdapt
         http.csrf()
             .disable()
             .authorizeRequests()
-            .antMatchers("/", "/css/*", "/js/*")
+            .antMatchers("/", "/css/*", "/js/*", "/images/**")
             .permitAll()
             .antMatchers(HttpMethod.DELETE, "/api/user/**").hasAuthority(USER_WRITE.getPermission())
             .antMatchers(HttpMethod.POST, "/api/user/**").hasAuthority(USER_WRITE.getPermission())
@@ -41,7 +45,21 @@ public class ApplicationSecurityConfiguration extends WebSecurityConfigurerAdapt
             .anyRequest()
             .authenticated()
             .and()
-            .httpBasic();
+            .formLogin()
+            .loginPage("/login")
+            .permitAll()
+            .defaultSuccessUrl("/courses", true)
+            .and()
+            .rememberMe().tokenValiditySeconds((int) TimeUnit.DAYS.toSeconds(7))
+            .key("somethingverysecured")
+            .and()
+            .logout()
+            .logoutUrl("/logout")
+            .logoutRequestMatcher(new AntPathRequestMatcher("/logout", "POST"))
+            .clearAuthentication(true)
+            .invalidateHttpSession(true)
+            .deleteCookies("JSESSIONID", "remember-me")
+            .logoutSuccessUrl("/login");
     }
 
     @Override
