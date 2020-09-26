@@ -4,14 +4,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
-import org.springframework.security.core.userdetails.UserDetailsService;
+
+import io.dumerz.secured.auth.ApplicationUserService;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import static io.dumerz.secured.security.ApplicationUserRole.*;
@@ -25,19 +26,20 @@ import static io.dumerz.secured.security.ApplicationUserPermission.*;
 public class ApplicationSecurityConfiguration extends WebSecurityConfigurerAdapter {
 
     private final PasswordEncoder passwordEncoder;
+    private final ApplicationUserService applicationUserService;
 
     @Autowired
-    public ApplicationSecurityConfiguration(PasswordEncoder passwordEncoder) {
+    public ApplicationSecurityConfiguration(PasswordEncoder passwordEncoder,
+            ApplicationUserService applicationUserService) {
         this.passwordEncoder = passwordEncoder;
+        this.applicationUserService = applicationUserService;
     }
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
-        http.csrf()
-            .disable()
+        http.csrf().disable()
             .authorizeRequests()
-            .antMatchers("/", "/css/*", "/js/*", "/images/**")
-            .permitAll()
+            .antMatchers("/", "/css/*", "/js/*", "/images/**").permitAll()
             .antMatchers(HttpMethod.DELETE, "/api/user/**").hasAuthority(USER_WRITE.getPermission())
             .antMatchers(HttpMethod.POST, "/api/user/**").hasAuthority(USER_WRITE.getPermission())
             .antMatchers(HttpMethod.PUT, "/api/user/**").hasAuthority(USER_WRITE.getPermission())
@@ -46,45 +48,35 @@ public class ApplicationSecurityConfiguration extends WebSecurityConfigurerAdapt
             .authenticated()
             .and()
             .formLogin()
-            .loginPage("/login")
-            .permitAll()
-            .defaultSuccessUrl("/courses", true)
+                .loginPage("/login")
+                .permitAll()
+                .defaultSuccessUrl("/courses", true)
+                .passwordParameter("password")
+                .usernameParameter("username")
             .and()
-            .rememberMe().tokenValiditySeconds((int) TimeUnit.DAYS.toSeconds(7))
-            .key("somethingverysecured")
+            .rememberMe()
+                .tokenValiditySeconds((int) TimeUnit.DAYS.toSeconds(7))
+                .key("somethingverysecured")
             .and()
             .logout()
-            .logoutUrl("/logout")
-            .logoutRequestMatcher(new AntPathRequestMatcher("/logout", "POST"))
-            .clearAuthentication(true)
-            .invalidateHttpSession(true)
-            .deleteCookies("JSESSIONID", "remember-me")
-            .logoutSuccessUrl("/login");
+                .logoutUrl("/logout")
+                .logoutRequestMatcher(new AntPathRequestMatcher("/logout", "POST"))
+                .clearAuthentication(true)
+                .invalidateHttpSession(true)
+                .deleteCookies("JSESSIONID", "remember-me")
+                .logoutSuccessUrl("/login");
     }
 
     @Override
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        auth.authenticationProvider(daoAuthenticationProvider());
+    }
+    
     @Bean
-    protected UserDetailsService userDetailsService() {
-        UserDetails userNew = User.builder()
-            .username("user06A")
-            .password(passwordEncoder.encode("P@ssword123"))
-            .authorities(MEMBER.getGrantedAuthorities())
-            .build();
-
-            UserDetails userAdmin = User.builder()
-            .username("user06B")
-            .password(passwordEncoder.encode("P@ssword123"))
-            .authorities(ADMIN.getGrantedAuthorities())
-            .build();
-
-            UserDetails userAdminReadOnly = User.builder()
-            .username("user06C")
-            .password(passwordEncoder.encode("P@ssword123"))
-            .authorities(ADMIN_READONLY.getGrantedAuthorities())
-            .build();
-
-        return new InMemoryUserDetailsManager(
-            userNew, userAdmin, userAdminReadOnly
-        );
+    public DaoAuthenticationProvider daoAuthenticationProvider() {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setPasswordEncoder(passwordEncoder);
+        provider.setUserDetailsService(applicationUserService);
+        return provider;
     }
 }
