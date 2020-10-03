@@ -1,20 +1,18 @@
 package io.dumerz.secured.jwt;
 
 public class UsernameAndPasswordAuthenticationRequest {
-    private String usermane;
+    private String username;
     private String password;
 
-    public UsernameAndPasswordAuthenticationRequest(String usermane, String password) {
-        this.usermane = usermane;
-        this.password = password;
+    public UsernameAndPasswordAuthenticationRequest() {
     }
 
-    public String getUsermane() {
-        return usermane;
+    public String getUsername() {
+        return username;
     }
 
-    public void setUsermane(String usermane) {
-        this.usermane = usermane;
+    public void setUsername(String username) {
+        this.username = username;
     }
 
     public String getPassword() {

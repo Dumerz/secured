@@ -9,15 +9,14 @@ import org.springframework.security.config.annotation.authentication.builders.Au
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.config.http.SessionCreationPolicy;
 
 import io.dumerz.secured.auth.ApplicationUserService;
+import io.dumerz.secured.jwt.JwtUsernameAndPasswordAuthenticationFilter;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import static io.dumerz.secured.security.ApplicationUserRole.*;
-
-import java.util.concurrent.TimeUnit;
 
 import static io.dumerz.secured.security.ApplicationUserPermission.*;
 
@@ -38,6 +37,10 @@ public class ApplicationSecurityConfiguration extends WebSecurityConfigurerAdapt
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http.csrf().disable()
+            .sessionManagement()
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            .and()
+            .addFilter(new JwtUsernameAndPasswordAuthenticationFilter(authenticationManager()))
             .authorizeRequests()
             .antMatchers("/", "/css/*", "/js/*", "/images/**").permitAll()
             .antMatchers(HttpMethod.DELETE, "/api/user/**").hasAuthority(USER_WRITE.getPermission())
@@ -45,26 +48,7 @@ public class ApplicationSecurityConfiguration extends WebSecurityConfigurerAdapt
             .antMatchers(HttpMethod.PUT, "/api/user/**").hasAuthority(USER_WRITE.getPermission())
             .antMatchers(HttpMethod.GET, "/api/user/**").hasAnyRole(ADMIN.name(), ADMIN_READONLY.name())
             .anyRequest()
-            .authenticated()
-            .and()
-            .formLogin()
-                .loginPage("/login")
-                .permitAll()
-                .defaultSuccessUrl("/courses", true)
-                .passwordParameter("password")
-                .usernameParameter("username")
-            .and()
-            .rememberMe()
-                .tokenValiditySeconds((int) TimeUnit.DAYS.toSeconds(7))
-                .key("somethingverysecured")
-            .and()
-            .logout()
-                .logoutUrl("/logout")
-                .logoutRequestMatcher(new AntPathRequestMatcher("/logout", "POST"))
-                .clearAuthentication(true)
-                .invalidateHttpSession(true)
-                .deleteCookies("JSESSIONID", "remember-me")
-                .logoutSuccessUrl("/login");
+            .authenticated();
     }
 
     @Override
