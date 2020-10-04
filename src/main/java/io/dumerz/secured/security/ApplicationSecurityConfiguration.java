@@ -3,35 +3,42 @@ package io.dumerz.secured.security;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 
 import io.dumerz.secured.auth.ApplicationUserService;
 import io.dumerz.secured.jwt.JwtUsernameAndPasswordAuthenticationFilter;
 
+import io.dumerz.secured.jwt.JwtConfig;
+import io.dumerz.secured.jwt.JwtTokenVerifier;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import static io.dumerz.secured.security.ApplicationUserRole.*;
 
-import static io.dumerz.secured.security.ApplicationUserPermission.*;
+import javax.crypto.SecretKey;
 
 @Configuration
 @EnableWebSecurity
+@EnableGlobalMethodSecurity(prePostEnabled = true)
 public class ApplicationSecurityConfiguration extends WebSecurityConfigurerAdapter {
 
     private final PasswordEncoder passwordEncoder;
     private final ApplicationUserService applicationUserService;
+    private final SecretKey secretKey;
+    private final JwtConfig jwtConfig;
 
     @Autowired
-    public ApplicationSecurityConfiguration(PasswordEncoder passwordEncoder,
-            ApplicationUserService applicationUserService) {
+    public ApplicationSecurityConfiguration(PasswordEncoder passwordEncoder, ApplicationUserService applicationUserService, SecretKey secretKey, JwtConfig jwtConfig) {
         this.passwordEncoder = passwordEncoder;
         this.applicationUserService = applicationUserService;
+        this.secretKey = secretKey;
+        this.jwtConfig = jwtConfig;
     }
 
     @Override
@@ -40,13 +47,11 @@ public class ApplicationSecurityConfiguration extends WebSecurityConfigurerAdapt
             .sessionManagement()
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             .and()
-            .addFilter(new JwtUsernameAndPasswordAuthenticationFilter(authenticationManager()))
+            .addFilter(new JwtUsernameAndPasswordAuthenticationFilter(authenticationManager(), jwtConfig, secretKey))
+            .addFilterAfter(new JwtTokenVerifier(secretKey, jwtConfig),JwtUsernameAndPasswordAuthenticationFilter.class)
             .authorizeRequests()
             .antMatchers("/", "/css/*", "/js/*", "/images/**").permitAll()
-            .antMatchers(HttpMethod.DELETE, "/api/user/**").hasAuthority(USER_WRITE.getPermission())
-            .antMatchers(HttpMethod.POST, "/api/user/**").hasAuthority(USER_WRITE.getPermission())
-            .antMatchers(HttpMethod.PUT, "/api/user/**").hasAuthority(USER_WRITE.getPermission())
-            .antMatchers(HttpMethod.GET, "/api/user/**").hasAnyRole(ADMIN.name(), ADMIN_READONLY.name())
+            .antMatchers("/api/user/**").hasAnyRole(ADMIN.name(), ADMIN_READONLY.name())
             .anyRequest()
             .authenticated();
     }

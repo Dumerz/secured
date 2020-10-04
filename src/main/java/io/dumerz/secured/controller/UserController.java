@@ -51,21 +51,21 @@ public class UserController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('user:write'")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
     public void createUser(@RequestBody User user) {
         System.out.println("New user added.");
         System.out.println(user);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('user:write')")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
     public void deleteUser(@PathVariable @RequestBody int id) {
         System.out.println("User deleted.");
         System.out.println(id);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('user:write')")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
     public void updateUser(@PathVariable int id, @RequestBody User user) {
         System.out.println("User updated");
         System.out.println(String.format("%s %s", id, user));
